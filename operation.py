@@ -7,6 +7,18 @@ from PIL import Image
 from copy import deepcopy
 import shutil
 import json
+import random
+
+
+def seed_everything(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)  # type: ignore
+    torch.backends.cudnn.deterministic = True  # type: ignore
+    torch.backends.cudnn.benchmark = True  # type: ignore
+
 
 def InfiniteSampler(n):
     """Data sampler"""
@@ -23,6 +35,7 @@ def InfiniteSampler(n):
 
 class InfiniteSamplerWrapper(data.sampler.Sampler):
     """Data sampler wrapper"""
+
     def __init__(self, data_source):
         self.num_samples = len(data_source)
 
@@ -36,7 +49,7 @@ class InfiniteSamplerWrapper(data.sampler.Sampler):
 def copy_G_params(model):
     flatten = deepcopy(list(p.data for p in model.parameters()))
     return flatten
-    
+
 
 def load_params(model, new_param):
     for p, new_p in zip(model.parameters(), new_param):
@@ -44,27 +57,28 @@ def load_params(model, new_param):
 
 
 def get_dir(args):
-    task_name = 'train_results/' + args.name
-    saved_model_folder = os.path.join( task_name, 'models')
-    saved_image_folder = os.path.join( task_name, 'images')
-    
+    task_name = "train_results/" + args.name
+    saved_model_folder = os.path.join(task_name, "models")
+    saved_image_folder = os.path.join(task_name, "images")
+
     os.makedirs(saved_model_folder, exist_ok=True)
     os.makedirs(saved_image_folder, exist_ok=True)
 
-    for f in os.listdir('./'):
-        if '.py' in f:
-            shutil.copy(f, task_name+'/'+f)
-    
-    with open( os.path.join(saved_model_folder, '../args.txt'), 'w') as f:
+    for f in os.listdir("./"):
+        if ".py" in f:
+            shutil.copy(f, task_name + "/" + f)
+
+    with open(os.path.join(saved_model_folder, "../args.txt"), "w") as f:
         json.dump(args.__dict__, f, indent=2)
 
     return saved_model_folder, saved_image_folder
 
 
-class  ImageFolder(Dataset):
+class ImageFolder(Dataset):
     """docstring for ArtDataset"""
+
     def __init__(self, root, transform=None):
-        super( ImageFolder, self).__init__()
+        super(ImageFolder, self).__init__()
         self.root = root
 
         self.frame = self._parse_frame()
@@ -76,7 +90,11 @@ class  ImageFolder(Dataset):
         img_names.sort()
         for i in range(len(img_names)):
             image_path = os.path.join(self.root, img_names[i])
-            if image_path[-4:] == '.jpg' or image_path[-4:] == '.png' or image_path[-5:] == '.jpeg': 
+            if (
+                image_path[-4:] == ".jpg"
+                or image_path[-4:] == ".png"
+                or image_path[-5:] == ".jpeg"
+            ):
                 frame.append(image_path)
         return frame
 
@@ -85,13 +103,12 @@ class  ImageFolder(Dataset):
 
     def __getitem__(self, idx):
         file = self.frame[idx]
-        img = Image.open(file).convert('RGB')
-            
+        img = Image.open(file).convert("RGB")
+
         if self.transform:
-            img = self.transform(img) 
+            img = self.transform(img)
 
         return img
-
 
 
 from io import BytesIO
@@ -111,10 +128,10 @@ class MultiResolutionDataset(Dataset):
         )
 
         if not self.env:
-            raise IOError('Cannot open lmdb dataset', path)
+            raise IOError("Cannot open lmdb dataset", path)
 
         with self.env.begin(write=False) as txn:
-            self.length = int(txn.get('length'.encode('utf-8')).decode('utf-8'))
+            self.length = int(txn.get("length".encode("utf-8")).decode("utf-8"))
 
         self.resolution = resolution
         self.transform = transform
@@ -124,14 +141,13 @@ class MultiResolutionDataset(Dataset):
 
     def __getitem__(self, index):
         with self.env.begin(write=False) as txn:
-            key = f'{self.resolution}-{str(index).zfill(5)}'.encode('utf-8')
+            key = f"{self.resolution}-{str(index).zfill(5)}".encode("utf-8")
             img_bytes = txn.get(key)
-            #key_asp = f'aspect_ratio-{str(index).zfill(5)}'.encode('utf-8')
-            #aspect_ratio = float(txn.get(key_asp).decode())
+            # key_asp = f'aspect_ratio-{str(index).zfill(5)}'.encode('utf-8')
+            # aspect_ratio = float(txn.get(key_asp).decode())
 
         buffer = BytesIO(img_bytes)
         img = Image.open(buffer)
         img = self.transform(img)
 
         return img
-

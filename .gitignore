@@ -133,8 +133,30 @@ dmypy.json
 
 # pytype static type analyzer
 .pytype/
+DATASET
 
 # Cython debug symbols
 cython_debug/
 storage/*
 train_results/*
+
+
+
+# IDE
+.vscode/
+
+# CACHE
+**/__pycache__/**
+.pytest_cache
+.testmondata
+*.pyc
+
+
+# DATASET
+**/DATASET/**
+
+# experiments
+outputs/
+*.ipynb
+
+
